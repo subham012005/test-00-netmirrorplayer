@@ -325,16 +325,18 @@ app.get("/proxy", async (req, res) => {
         let responseText;
         let contentType = "application/json";
 
-        // Cloudflare aggressive block on net52.cc requires cloudscraper
+        // Cloudflare aggressive block on net52.cc requires a scraping API (ScrapingBee)
         if (targetUrl.includes("net52.cc")) {
-            responseText = await cloudscraper({
-                method: "GET",
-                url: targetUrl,
+            const SCRAPINGBEE_API_KEY = "VFWH5MGUBWM1ZNH29USM3SE7XA93UFV8INUTR21XSDERKX3GQVRORMJEFLJO96WZIX9Y0PLNNTDN8TXB";
+            const sbUrl = "https://app.scrapingbee.com/api/v1/?api_key=" + SCRAPINGBEE_API_KEY + "&url=" + encodeURIComponent(targetUrl) + "&forward_headers=true";
+            
+            const response = await fetch(sbUrl, {
                 headers: {
-                    Referer: SOURCE_REFERER,
-                    Origin: SOURCE_ORIGIN
+                    "Spb-Forwarded-Referer": SOURCE_REFERER,
+                    "Spb-Forwarded-Origin": SOURCE_ORIGIN
                 }
             });
+            responseText = await response.text();
         } else {
             // Freecdn and others have no CF block for media streams, native fetch is faster
             const response = await fetch(targetUrl, {
