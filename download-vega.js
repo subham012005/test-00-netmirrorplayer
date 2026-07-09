@@ -321,20 +321,47 @@ app.get("/proxy", async (req, res) => {
     }
 
     try {
-        const response = await fetch(targetUrl, {
-            headers: {
-                Referer: SOURCE_REFERER,
-                Origin: SOURCE_ORIGIN,
-                Accept: "*/*",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+        let isText = targetUrl.includes(".m3u8") || targetUrl.includes(".php");
+        let responseText;
+        let contentType = "application/json";
+
+        // Cloudflare aggressive block on net52.cc requires cloudscraper
+        if (targetUrl.includes("net52.cc")) {
+            responseText = await cloudscraper({
+                method: "GET",
+                url: targetUrl,
+                headers: {
+                    Referer: SOURCE_REFERER,
+                    Origin: SOURCE_ORIGIN
+                }
+            });
+        } else {
+            // Freecdn and others have no CF block for media streams, native fetch is faster
+            const response = await fetch(targetUrl, {
+                headers: {
+                    Referer: SOURCE_REFERER,
+                    Origin: SOURCE_ORIGIN,
+                    Accept: "*/*",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+                }
+            });
+            contentType = response.headers.get("content-type") || "video/mp2t";
+
+            if (isText) {
+                responseText = await response.text();
+            } else {
+                // Stream binary media (.ts)
+                res.setHeader("Content-Type", contentType);
+                res.setHeader("Access-Control-Allow-Origin", "*");
+                const buffer = Buffer.from(await response.arrayBuffer());
+                return res.send(buffer);
             }
-        });
+        }
 
+        // Process Text Responses (m3u8 playlists)
         if (targetUrl.includes(".m3u8")) {
-            let playlist = await response.text();
             const base = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
-
-            playlist = playlist.split("\n").map(line => {
+            let playlist = responseText.split("\n").map(line => {
                 let trimmed = line.trim();
                 if (!trimmed) return line;
 
@@ -354,14 +381,15 @@ app.get("/proxy", async (req, res) => {
             res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
             res.setHeader("Access-Control-Allow-Origin", "*");
             res.setHeader("Access-Control-Allow-Headers", "*");
-            res.send(playlist);
+            return res.send(playlist);
         } else {
-            res.setHeader("Content-Type", response.headers.get("content-type") || "video/mp2t");
+            // Process other text responses (like JSON from php)
+            res.setHeader("Content-Type", "application/json");
             res.setHeader("Access-Control-Allow-Origin", "*");
-            
-            const buffer = Buffer.from(await response.arrayBuffer());
-            res.send(buffer);
+            res.setHeader("Access-Control-Allow-Headers", "*");
+            return res.send(responseText);
         }
+
     } catch (err) {
         console.error(err);
         res.status(500).send("Proxy error");
