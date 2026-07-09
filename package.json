@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "start": "node download-vega.js"
+  },
+  "dependencies": {
+    "axios": "^1.18.1",
+    "cheerio": "^1.2.0",
+    "cloudscraper": "^4.6.0",
+    "express": "^5.2.1",
+    "node-fetch": "^3.3.2",
+    "playwright": "^1.61.1",
+    "socks-proxy-agent": "^10.1.0"
+  },
+  "type": "module"
+}

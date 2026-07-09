@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Premium Multi Player - Embed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* In embed mode, always show the player wrapper */
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+    }
+
+    .player-wrapper {
+      display: block !important;
+    }
+
+    #embedLoader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+      z-index: 200;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="embedLoader">Loading...</div>
+
+  <!-- Video Player Environment -->
+  <div class="player-wrapper" id="playerWrapper">
+    <div id="videoLoaderContainer"
+      style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; text-align: center; pointer-events: none;">
+      <div id="videoLoader"></div>
+      <div id="loaderText"
+        style="color: rgba(255,255,255,0.9); margin-top: 15px; font-size: 14px; font-weight: 500; text-shadow: 0 2px 4px rgba(0,0,0,0.8); letter-spacing: 0.5px;">
+        Hold on bro...</div>
+    </div>
+    <!-- Removed native controls -->
+    <video id="player" playsinline preload="auto"></video>
+
+    <!-- Video Click Area -->
+    <div id="videoClickArea" style="position: absolute; top:0; left:0; width:100%; height:100%; cursor:pointer;"></div>
+
+    <!-- Center Animation -->
+    <div class="center-action-icon" id="centerIcon">
+      <svg id="centerSvg" class="icon" viewBox="0 0 24 24">
+        <path d="M8 5v14l11-7z" />
+      </svg>
+    </div>
+
+    <!-- Skip Intro -->
+    <button class="skip-btn" id="skipIntroBtn" onclick="skipIntro()">Skip Ad</button>
+
+    <!-- Controls Overlay -->
+    <div class="controls-overlay">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <div id="playerTvControls" style="display: none; gap: 10px;">
+            <div class="custom-dropdown" id="seasonDropdownContainer">
+              <button class="custom-dropdown-btn" id="seasonDropdownBtn">Season 1</button>
+              <div class="custom-dropdown-list" id="seasonDropdownList"></div>
+            </div>
+            <div class="custom-dropdown" id="episodeDropdownContainer">
+              <button class="custom-dropdown-btn" id="episodeDropdownBtn">1 episode</button>
+              <div class="custom-dropdown-list" id="episodeDropdownList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="bottom-bar">
+        <!-- Progress Bar -->
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-tooltip" id="progressTooltip">0:00</div>
+          <div class="progress-track">
+            <div class="progress-buffer" id="progressBuffer"></div>
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-thumb" id="progressThumb"></div>
+          </div>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="controls-row">
+          <!-- Left side -->
+          <div class="controls-left">
+            <button class="control-btn" onclick="togglePlayPause()">
+              <svg id="playPauseIcon" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+
+
+            <div class="volume-container">
+              <button class="control-btn" onclick="toggleMute()">
+                <svg id="volumeIcon" viewBox="0 0 24 24">
+                  <path
+                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                </svg>
+              </button>
+              <div class="volume-slider-wrapper">
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+              </div>
+            </div>
+
+            <span id="timeDisplay" style="font-size: 14px; margin-left:10px;">0:00 / 0:00</span>
+          </div>
+
+          <!-- Center Title -->
+          <div class="movie-title" id="movieTitleDisplay"></div>
+
+          <!-- Right side -->
+          <div class="controls-right">
+
+            <div class="menu-container" id="settingsMenuContainer">
+              <button class="control-btn" id="settingsBtn" onclick="toggleSettings(event)"
+                style="display: flex; gap: 4px; border-radius: 8px; padding: 6px 10px;">
+                <span id="currentQualityDisplay"
+                  style="font-size: 14px; font-weight: 600; padding-top: 2px;">Auto</span>
+                <svg viewBox="0 0 24 24" style="width: 24px; height: 24px;">
+                  <path
+                    d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
+                </svg>
+              </button>
+              <div class="menu-popup tabbed-menu" id="settingsPopup">
+                <div class="tab-header">
+                  <div class="tab-btn active" id="tabQuality" onclick="switchTab('qualitySection', this)">Quality</div>
+                  <div class="tab-btn" id="tabAudio" onclick="switchTab('languageSection', this)">Audio</div>
+                  <div class="tab-btn" id="tabCaptions" onclick="switchTab('captionsSection', this)">Captions</div>
+                  <div class="tab-btn" id="tabFit" onclick="switchTab('fitSection', this)">Fit</div>
+                </div>
+                <div class="tab-content">
+                  <div id="qualitySection" class="tab-pane active">
+                    <div id="qualityPopup"></div>
+                  </div>
+                  <div id="languageSection" class="tab-pane">
+                    <div id="languagePopup"></div>
+                  </div>
+                  <div id="captionsSection" class="tab-pane">
+                    <div class="fit-controls"
+                      style="margin-bottom: 10px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                      <div
+                        style="font-size: 12px; font-weight: 600; color: #a3a3a3; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                        Subtitle Size</div>
+                      <div class="fit-buttons"
+                        style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                        <button onclick="adjustSubtitleSize(-10)" style="padding: 5px 15px; font-size: 16px;">-</button>
+                        <span id="subtitleSizeDisplay"
+                          style="font-size: 18px; margin: 0; min-width: 50px; text-align: center; text-shadow: none; font-weight: 600;">100%</span>
+                        <button onclick="adjustSubtitleSize(10)" style="padding: 5px 15px; font-size: 16px;">+</button>
+                      </div>
+                    </div>
+                    <div
+                      style="font-size: 12px; font-weight: 600; color: #a3a3a3; margin-bottom: 8px; margin-top: 10px; text-transform: uppercase; letter-spacing: 1px;">
+                      Language</div>
+                    <div id="captionsPopup"></div>
+                  </div>
+                  <div id="fitSection" class="tab-pane">
+                    <div class="fit-controls">
+                      <span id="fitValueDisplay">100%</span>
+                      <div class="fit-buttons">
+                        <button onclick="adjustFit(-5)">-5%</button>
+                        <button onclick="adjustFit(5)">+5%</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button class="control-btn" onclick="toggleFullScreen()">
+              <svg id="fullscreenIcon" viewBox="0 0 24 24">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+              </svg>
+            </button>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <!-- Using disable-devtool from GitHub -->
+  <!-- <script disable-devtool-auto src='https://cdn.jsdelivr.net/npm/disable-devtool'></script> -->
+</body>
+
+</html>
