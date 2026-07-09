@@ -308,6 +308,73 @@ app.get("/movie", async (req, res) => {
 
 
 
+// ================= HLS PROXY =================
+
+const SOURCE_REFERER = "https://net52.cc/";
+const SOURCE_ORIGIN = "https://net52.cc";
+
+app.get("/proxy", async (req, res) => {
+    const targetUrl = req.query.url;
+    
+    if (!targetUrl) {
+        return res.status(400).send("Missing url parameter");
+    }
+
+    try {
+        const response = await fetch(targetUrl, {
+            headers: {
+                Referer: SOURCE_REFERER,
+                Origin: SOURCE_ORIGIN,
+                Accept: "*/*"
+            }
+        });
+
+        if (targetUrl.includes(".m3u8")) {
+            let playlist = await response.text();
+            const base = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
+
+            playlist = playlist.split("\n").map(line => {
+                let trimmed = line.trim();
+                if (!trimmed) return line;
+
+                if (trimmed.startsWith("#EXT-X-MEDIA:") && trimmed.includes('URI="')) {
+                    return trimmed.replace(/URI="([^"]+)"/, (match, p1) => {
+                        const abs = new URL(p1, base).href;
+                        return `URI="/proxy?url=${encodeURIComponent(abs)}"`;
+                    });
+                }
+
+                if (trimmed.startsWith("#")) return line;
+
+                const absolute = new URL(trimmed, base).href;
+                return `/proxy?url=${encodeURIComponent(absolute)}`;
+            }).join("\n");
+
+            res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Access-Control-Allow-Headers", "*");
+            res.send(playlist);
+        } else {
+            res.setHeader("Content-Type", response.headers.get("content-type") || "video/mp2t");
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            
+            const buffer = Buffer.from(await response.arrayBuffer());
+            res.send(buffer);
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Proxy error");
+    }
+});
+
+// ================= PLAYER =================
+
+import path from 'path';
+app.get("/player", (req, res) => {
+    res.sendFile(path.join(process.cwd(), "testing-net-player.html"));
+});
+
+
 // ================= START =================
 
 app.listen(PORT, () => {

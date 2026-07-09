@@ -1135,7 +1135,7 @@
                         item.sources.forEach(source => {
                             if (source.file && source.file.startsWith('/pv/')) {
                                 const absoluteUrl = API + source.file;
-                                source.file = "http://localhost:3000/proxy?url=" + encodeURIComponent(absoluteUrl);
+                                source.file = "/proxy?url=" + encodeURIComponent(absoluteUrl);
                             }
                         });
                     }
