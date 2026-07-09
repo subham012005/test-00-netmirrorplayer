@@ -328,7 +328,8 @@ app.get("/proxy", async (req, res) => {
         // Cloudflare aggressive block on net52.cc requires a scraping API (ScrapingBee)
         if (targetUrl.includes("net52.cc")) {
             const SCRAPINGBEE_API_KEY = "VFWH5MGUBWM1ZNH29USM3SE7XA93UFV8INUTR21XSDERKX3GQVRORMJEFLJO96WZIX9Y0PLNNTDN8TXB";
-            const sbUrl = "https://app.scrapingbee.com/api/v1/?api_key=" + SCRAPINGBEE_API_KEY + "&url=" + encodeURIComponent(targetUrl) + "&forward_headers=true";
+            // Use session_id to maintain the same IP address across requests (prevents 404 on IP-bound tokens)
+            const sbUrl = "https://app.scrapingbee.com/api/v1/?api_key=" + SCRAPINGBEE_API_KEY + "&url=" + encodeURIComponent(targetUrl) + "&forward_headers=true&session_id=net52session";
             
             const response = await fetch(sbUrl, {
                 headers: {
@@ -337,6 +338,12 @@ app.get("/proxy", async (req, res) => {
                 }
             });
             responseText = await response.text();
+            
+            // ScrapingBee passes the actual status code in this header
+            const actualStatus = response.headers.get("Spb-Initial-Status-Code");
+            if (actualStatus && actualStatus !== "200" && actualStatus !== "206") {
+                return res.status(parseInt(actualStatus)).send(responseText);
+            }
         } else {
             // Freecdn and others have no CF block for media streams, native fetch is faster
             const response = await fetch(targetUrl, {
@@ -361,7 +368,7 @@ app.get("/proxy", async (req, res) => {
         }
 
         // Process Text Responses (m3u8 playlists)
-        if (targetUrl.includes(".m3u8")) {
+        if (targetUrl.includes(".m3u8") && responseText.includes("#EXTM3U")) {
             const base = targetUrl.substring(0, targetUrl.lastIndexOf("/") + 1);
             let playlist = responseText.split("\n").map(line => {
                 let trimmed = line.trim();
@@ -384,6 +391,10 @@ app.get("/proxy", async (req, res) => {
             res.setHeader("Access-Control-Allow-Origin", "*");
             res.setHeader("Access-Control-Allow-Headers", "*");
             return res.send(playlist);
+        } else if (targetUrl.includes(".m3u8")) {
+            // It was an m3u8 request but the response was not a valid playlist (e.g. 404 HTML)
+            res.setHeader("Content-Type", "text/html");
+            return res.status(404).send(responseText);
         } else {
             // Process other text responses (like JSON from php)
             res.setHeader("Content-Type", "application/json");
