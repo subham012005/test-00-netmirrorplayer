@@ -328,8 +328,8 @@ app.get("/proxy", async (req, res) => {
         // Cloudflare aggressive block on net52.cc requires a scraping API (ScrapingBee)
         if (targetUrl.includes("net52.cc")) {
             const SCRAPINGBEE_API_KEY = "VFWH5MGUBWM1ZNH29USM3SE7XA93UFV8INUTR21XSDERKX3GQVRORMJEFLJO96WZIX9Y0PLNNTDN8TXB";
-            // Use session_id to maintain the same IP address across requests (prevents 404 on IP-bound tokens)
-            const sbUrl = "https://app.scrapingbee.com/api/v1/?api_key=" + SCRAPINGBEE_API_KEY + "&url=" + encodeURIComponent(targetUrl) + "&forward_headers=true&session_id=net52session";
+            // Use session_id to maintain the same IP address across requests (prevents 404 on IP-bound tokens). Must be integer!
+            const sbUrl = "https://app.scrapingbee.com/api/v1/?api_key=" + SCRAPINGBEE_API_KEY + "&url=" + encodeURIComponent(targetUrl) + "&forward_headers=true&session_id=52";
             
             const response = await fetch(sbUrl, {
                 headers: {
