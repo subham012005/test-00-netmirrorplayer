@@ -325,8 +325,9 @@ app.get("/proxy", async (req, res) => {
         let responseText;
         let contentType = "application/json";
 
-        // Cloudflare aggressive block on net52.cc requires a scraping API (ScrapingBee)
-        if (targetUrl.includes("net52.cc")) {
+        // Cloudflare aggressive block on net52.cc requires a scraping API (ScrapingBee) ONLY for the JSON payload.
+        // Media files (.m3u8, .ts) bypass Cloudflare challenges natively, so we fetch them directly.
+        if (targetUrl.includes("net52.cc") && targetUrl.includes(".php")) {
             const SCRAPINGBEE_API_KEY = "VFWH5MGUBWM1ZNH29USM3SE7XA93UFV8INUTR21XSDERKX3GQVRORMJEFLJO96WZIX9Y0PLNNTDN8TXB";
             // Use session_id to maintain the same IP address across requests (prevents 404 on IP-bound tokens). Must be integer!
             const sbUrl = "https://app.scrapingbee.com/api/v1/?api_key=" + SCRAPINGBEE_API_KEY + "&url=" + encodeURIComponent(targetUrl) + "&forward_headers=true&session_id=52";
@@ -345,7 +346,7 @@ app.get("/proxy", async (req, res) => {
                 return res.status(parseInt(actualStatus)).send(responseText);
             }
         } else {
-            // Freecdn and others have no CF block for media streams, native fetch is faster
+            // Freecdn and media streams have no CF block, native fetch is faster and avoids ScrapingBee bugs
             const response = await fetch(targetUrl, {
                 headers: {
                     Referer: SOURCE_REFERER,
