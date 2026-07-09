@@ -333,8 +333,8 @@ app.get("/proxy", async (req, res) => {
             
             const response = await fetch(sbUrl, {
                 headers: {
-                    "Spb-Forwarded-Referer": SOURCE_REFERER,
-                    "Spb-Forwarded-Origin": SOURCE_ORIGIN
+                    "Spb-Referer": SOURCE_REFERER,
+                    "Spb-Origin": SOURCE_ORIGIN
                 }
             });
             responseText = await response.text();
