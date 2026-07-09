@@ -392,7 +392,7 @@ app.get("/proxy", async (req, res) => {
 
     } catch (err) {
         console.error(err);
-        res.status(500).send("Proxy error");
+        res.status(500).send("Proxy error: " + err.message);
     }
 });
 
