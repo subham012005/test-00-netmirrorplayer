@@ -1122,8 +1122,8 @@
                 "&tm=" + t +
                 "&h=" + encodeURIComponent(hh);
 
-            // Route through a free CORS proxy
-            const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+            // Route through our own backend proxy to avoid corsproxy.io limits
+            const proxyUrl = "/proxy?url=" + encodeURIComponent(targetUrl);
 
             let data = [];
             try {
